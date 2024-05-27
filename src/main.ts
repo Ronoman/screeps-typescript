@@ -1,8 +1,8 @@
 import { ErrorMapper } from "utils/ErrorMapper";
 import { RoleType, RoleCount, CustomCreepMemory } from "common";
-import { MinerMemory, runMiner } from "roles/miner";
-import { HaulerMemory, runHauler, generateHaulerTasks } from "roles/hauler";
-import { makeid } from "utils/Id";
+import { runMiner } from "roles/miner";
+import { runHauler, generateHaulerTasks } from "roles/hauler";
+import { countAssignedMiners, countMiningSpots, createCreeps } from "spawning";
 
 
 declare global {
@@ -54,15 +54,12 @@ export const loop = ErrorMapper.wrapLoop(() => {
     }
   }
 
-  if (current_role_counts.harvesters == 0 && canCreateHauler(Game.spawns["Spawn1"])) {
-    console.log("No harvesters, creating new one.");
-    createMinerCreep(makeid(5));
-  } else if (current_role_counts.haulers < current_role_counts.harvesters && canCreateMiner(Game.spawns["Spawn1"])) {
-    console.log("Fewer haulers than harvesters, creating new one.");
-    createHaulerCreep(makeid(5));
-  } else if (canCreateMiner(Game.spawns["Spawn1"])) {
-    console.log("Equal harvesters and haulers, creating new harvester.");
-    createMinerCreep(makeid(5));
+  createCreeps(current_role_counts);
+
+  let source = Game.getObjectById(<Id<Source>> "7dd64ef022c0812953450aa8");
+  if (source !== null) {
+    console.log(`Walkable spots around closest source: ${countMiningSpots(source)}`);
+    console.log(`Currently assigned miners: ${countAssignedMiners(source)}`);
   }
 });
 
@@ -82,45 +79,4 @@ function countRoles(): RoleCount {
   }
 
   return current_role_counts;
-}
-
-const BODY_COSTS = {
-  "move": 50,
-  "work": 100,
-  "attack": 80,
-  "carry": 50,
-  "heal": 250,
-  "ranged_attack": 150,
-  "tough": 10,
-  "claim": 600
-}
-
-const HAULER_BODY = [CARRY, CARRY, MOVE];
-function canCreateHauler(spawn: StructureSpawn): boolean {
-  return spawn.store.energy >= _.sum(HAULER_BODY, (part) => BODY_COSTS[part]);
-}
-function createHaulerCreep(id: string) {
-  Game.spawns["Spawn1"].spawnCreep(
-    [CARRY, CARRY, MOVE],
-    `Hauler_${id}`,
-    { memory: new HaulerMemory() }
-  );
-}
-
-const MINER_BODY = [CARRY, WORK, MOVE];
-function canCreateMiner(spawn: StructureSpawn): boolean {
-  return spawn.store.energy >= _.sum(MINER_BODY, (part) => BODY_COSTS[part]);
-}
-function createMinerCreep(id: string) {
-  let sources = Game.rooms["sim"].find(FIND_SOURCES);
-  if (sources.length > 0) {
-    let source = sources[0];
-    Game.spawns["Spawn1"].spawnCreep(
-      [WORK, CARRY, MOVE],
-      `Miner_${id}`,
-      { memory: new MinerMemory(source.id) }
-    );
-  } else {
-    console.log("Can't create miner, no sources found.");
-  }
 }
