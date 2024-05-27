@@ -32,14 +32,16 @@ enum HaulerTaskType {
 class HaulerTask {
     task_type: HaulerTaskType
     source: RoomPosition;
+    energy_amount: number;
 
     // Only set if task_type === HaulerTaskType.MINER_CREEP
     source_creep_name: string | null;
 
     prioritized_targets: RoomPosition[];
 
-    constructor(source: RoomPosition, prioritized_targets: RoomPosition[], task_type: HaulerTaskType, source_creep_name: string | null = null) {
+    constructor(source: RoomPosition, energy_amount: number, prioritized_targets: RoomPosition[], task_type: HaulerTaskType, source_creep_name: string | null = null) {
         this.source = source;
+        this.energy_amount = energy_amount;
         this.prioritized_targets = prioritized_targets;
         this.task_type = task_type;
         this.source_creep_name = source_creep_name;
@@ -69,6 +71,7 @@ export function generateHaulerTasks(rooms: Room[], primary_room: Room): HaulerTa
         for (let dropped_resource of dropped_resources) {
             all_tasks.push(new HaulerTask(
                 new RoomPosition(dropped_resource.pos.x, dropped_resource.pos.y, room.name),
+                dropped_resource.amount,
                 [primary_room_spawn.pos],
                 HaulerTaskType.DROPPED_RESOURCE
             ));
@@ -82,7 +85,7 @@ export function generateHaulerTasks(rooms: Room[], primary_room: Room): HaulerTa
         if (creep_memory.role === RoleType.MINER) {
             if (creep.store.getCapacity(RESOURCE_ENERGY) > 0) {
                 all_tasks.push(new HaulerTask(
-                    creep.pos, [primary_room_spawn.pos], HaulerTaskType.MINER_CREEP, creep.name
+                    creep.pos, creep.store.getUsedCapacity(RESOURCE_ENERGY), [primary_room_spawn.pos], HaulerTaskType.MINER_CREEP, creep.name
                 ));
             }
         }
@@ -117,7 +120,7 @@ function distanceToTask(creep: Creep, task: HaulerTask): number {
 // TODO: More energy -> Higher priority
 // TODO: For DroppedResource, the amount of energy depends on how long it'll take the creep to get there.
 function haulerTaskValue(creep: Creep, task: HaulerTask): number {
-    return 1.0 / distanceToTask(creep, task);
+    return 1.0 / distanceToTask(creep, task) + task.energy_amount;
 }
 
 export function runHauler(creep: Creep, role_count: RoleCount, valid_tasks: HaulerTask[]): HaulerTask[] {
