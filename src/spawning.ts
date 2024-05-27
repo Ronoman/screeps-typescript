@@ -15,9 +15,6 @@ const BODY_COSTS = {
 }
 
 const HAULER_BODY = [CARRY, CARRY, MOVE];
-function canCreateHauler(spawn: StructureSpawn): boolean {
-  return spawn.store.energy >= _.sum(HAULER_BODY, (part) => BODY_COSTS[part]);
-}
 function createHaulerCreep() {
   Game.spawns["Spawn1"].spawnCreep(
     [CARRY, CARRY, MOVE],
@@ -27,16 +24,13 @@ function createHaulerCreep() {
 }
 
 const MINER_BODY = [CARRY, WORK, MOVE];
-function canCreateMiner(spawn: StructureSpawn): boolean {
-  return spawn.store.energy >= _.sum(MINER_BODY, (part) => BODY_COSTS[part]);
-}
 function createMinerCreep(): boolean {
   let sources = Game.rooms["sim"].find(FIND_SOURCES);
   if (sources.length > 0) {
     let chosen_source: Source | null = null;
 
     for (let source of sources) {
-      if (countAssignedMiners(source) < countMiningSpots(source)) {
+      if (countAssignedMiners(source) < countMiningSpots(source) && !isSourceGuarded(source)) {
         chosen_source = source;
         break;
       }
@@ -65,7 +59,7 @@ function createMinerCreep(): boolean {
   }
 }
 
-export function countMiningSpots(source: Source): number {
+function countMiningSpots(source: Source): number {
   let SURROUNDING_SPOTS = [
     [-1, -1], [0, -1], [1, -1],
     [-1, 0],           [1, 0],
@@ -84,7 +78,7 @@ export function countMiningSpots(source: Source): number {
   return count_walkable;
 }
 
-export function countAssignedMiners(source: Source) {
+function countAssignedMiners(source: Source) {
   let assigned_miners = 0;
 
   for (let creep_name in Game.creeps) {
@@ -103,15 +97,39 @@ export function countAssignedMiners(source: Source) {
   return assigned_miners;
 }
 
+function isSourceGuarded(source: Source): boolean {
+  let room = Game.rooms[source.room.name];
+  let lairs_in_room = room.find(FIND_HOSTILE_STRUCTURES, {filter: (structure) => { return structure.structureType == STRUCTURE_KEEPER_LAIR }});
+
+  for (let lair of lairs_in_room) {
+    if (lair.pos.getRangeTo(source.pos.x, source.pos.y) < 20) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+const UPGRADER_BODY = [CARRY, WORK, MOVE];
+// function createUpgraderCreep(): boolean {
+
+// }
+
+function canCreateCreep(spawn: StructureSpawn, body: BodyPartConstant[]) {
+  return spawn.store.energy >= _.sum(body, (part) => BODY_COSTS[part]);
+}
+
 export function createCreeps(current_role_counts: RoleCount) {
-  if (current_role_counts.harvesters == 0 && canCreateHauler(Game.spawns["Spawn1"])) {
+  if (current_role_counts.harvesters == 0 && canCreateCreep(Game.spawns["Spawn1"], MINER_BODY)) {
     console.log("No harvesters, creating new one.");
     createMinerCreep();
-  } else if (current_role_counts.haulers < current_role_counts.harvesters && canCreateMiner(Game.spawns["Spawn1"])) {
+  } else if (current_role_counts.haulers < current_role_counts.harvesters && canCreateCreep(Game.spawns["Spawn1"], HAULER_BODY)) {
     console.log("Fewer haulers than harvesters, creating new one.");
     createHaulerCreep();
-  } else if (canCreateMiner(Game.spawns["Spawn1"])) {
+  } else if (canCreateCreep(Game.spawns["Spawn1"], MINER_BODY)) {
     console.log("Equal harvesters and haulers, creating new harvester.");
     createMinerCreep();
+  } else {
+    console.log("No more creeps to create! Consider getting good.");
   }
 }

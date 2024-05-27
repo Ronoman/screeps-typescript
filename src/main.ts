@@ -2,7 +2,7 @@ import { ErrorMapper } from "utils/ErrorMapper";
 import { RoleType, RoleCount, CustomCreepMemory } from "common";
 import { runMiner } from "roles/miner";
 import { runHauler, generateHaulerTasks } from "roles/hauler";
-import { countAssignedMiners, countMiningSpots, createCreeps } from "spawning";
+import { createCreeps } from "spawning";
 
 
 declare global {
@@ -56,11 +56,12 @@ export const loop = ErrorMapper.wrapLoop(() => {
 
   createCreeps(current_role_counts);
 
-  let source = Game.getObjectById(<Id<Source>> "7dd64ef022c0812953450aa8");
-  if (source !== null) {
-    console.log(`Walkable spots around closest source: ${countMiningSpots(source)}`);
-    console.log(`Currently assigned miners: ${countAssignedMiners(source)}`);
-  }
+  // let source = Game.getObjectById(<Id<Source>> "7dd64ef022c0812953450aa8");
+  // if (source !== null) {
+  //   console.log(`Walkable spots around closest source: ${countMiningSpots(source)}`);
+  //   console.log(`Currently assigned miners: ${countAssignedMiners(source)}`);
+  //   isSourceGuarded(source);
+  // }
 });
 
 function countRoles(): RoleCount {
