@@ -1,7 +1,7 @@
 import { MinerMemory } from "roles/miner";
 import { HaulerMemory } from "roles/hauler";
 import { makeid } from "utils/Id";
-import { CustomCreepMemory, RoleCount, RoleType } from "common";
+import { CustomCreepMemory, RoleType } from "common";
 
 const BODY_COSTS = {
   "move": 50,
@@ -119,15 +119,15 @@ function canCreateCreep(spawn: StructureSpawn, body: BodyPartConstant[]) {
   return spawn.store.energy >= _.sum(body, (part) => BODY_COSTS[part]);
 }
 
-export function createCreeps(current_role_counts: RoleCount) {
-  if (current_role_counts.harvesters == 0 && canCreateCreep(Game.spawns["Spawn1"], MINER_BODY)) {
-    console.log("No harvesters, creating new one.");
+export function createCreeps(miner_count: number, hauler_count: number) {
+  if (miner_count == 0 && canCreateCreep(Game.spawns["Spawn1"], MINER_BODY)) {
+    console.log("No miners, creating new one.");
     createMinerCreep();
-  } else if (current_role_counts.haulers < current_role_counts.harvesters && canCreateCreep(Game.spawns["Spawn1"], HAULER_BODY)) {
-    console.log("Fewer haulers than harvesters, creating new one.");
+  } else if (hauler_count < miner_count && canCreateCreep(Game.spawns["Spawn1"], HAULER_BODY)) {
+    console.log("Fewer haulers than miners, creating new one.");
     createHaulerCreep();
   } else if (canCreateCreep(Game.spawns["Spawn1"], MINER_BODY)) {
-    console.log("Equal harvesters and haulers, creating new harvester.");
+    console.log("Equal miners and haulers, creating new harvester.");
     createMinerCreep();
   } else {
     console.log("No more creeps to create! Consider getting good.");

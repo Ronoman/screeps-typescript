@@ -1,9 +1,20 @@
 import { ErrorMapper } from "utils/ErrorMapper";
-import { RoleType, RoleCount, CustomCreepMemory } from "common";
-import { runMiner } from "roles/miner";
-import { runHauler, generateHaulerTasks } from "roles/hauler";
+import { RoleType, CustomCreepMemory } from "common";
+import { Miner } from "roles/miner";
+import { Hauler } from "roles/hauler";
 import { createCreeps } from "spawning";
+import { HaulerTaskManager } from "roles/hauler";
 
+
+class CreepsByRole {
+  miners: Miner[];
+  haulers: Hauler[];
+
+  constructor() {
+    this.miners = [];
+    this.haulers = [];
+  }
+}
 
 declare global {
   /*
@@ -40,44 +51,33 @@ export const loop = ErrorMapper.wrapLoop(() => {
     }
   }
 
-  let current_role_counts = countRoles();
+  let creeps_by_role = new CreepsByRole();
 
   for (let creep_name in Game.creeps) {
     let creep = Game.creeps[creep_name];
     let creep_memory = creep.memory as CustomCreepMemory;
 
     if (creep_memory.role === RoleType.MINER) {
-      runMiner(creep, current_role_counts);
+      creeps_by_role.miners.push(new Miner(creep));
     } else if(creep_memory.role === RoleType.HAULER) {
-      let sim_room = Game.rooms["sim"];
-      runHauler(creep, current_role_counts, generateHaulerTasks([sim_room], sim_room));
+      creeps_by_role.haulers.push(new Hauler(creep));
     }
   }
 
-  createCreeps(current_role_counts);
+  console.log(`----- Game time: ${Game.time} -----`);
 
-  // let source = Game.getObjectById(<Id<Source>> "7dd64ef022c0812953450aa8");
-  // if (source !== null) {
-  //   console.log(`Walkable spots around closest source: ${countMiningSpots(source)}`);
-  //   console.log(`Currently assigned miners: ${countAssignedMiners(source)}`);
-  //   isSourceGuarded(source);
-  // }
+  for (let miner of creeps_by_role.miners) {
+    miner.run(creeps_by_role.haulers.length);
+  }
+
+  new HaulerTaskManager(creeps_by_role.haulers, [Game.rooms["sim"]], Game.rooms["sim"]).run();
+
+  for (let hauler of creeps_by_role.haulers) {
+    hauler.run();
+  }
+
+  createCreeps(creeps_by_role.miners.length, creeps_by_role.haulers.length);
+
+  // let all_hauler_tasks = generateAllHaulerTasks([Game.rooms["sim"]], Game.rooms["sim"]);
+  // visualizeHaulerTasks(all_hauler_tasks[0], all_hauler_tasks[1]);
 });
-
-function countRoles(): RoleCount {
-  let current_role_counts = new RoleCount(0, 0, 0);
-  for (let creep_name in Game.creeps) {
-    let creep: Creep = Game.creeps[creep_name];
-    let creep_memory = creep.memory as CustomCreepMemory;
-
-    if (creep_memory.role == RoleType.MINER) {
-      current_role_counts.harvesters += 1;
-    } else if (creep_memory.role == RoleType.HAULER) {
-      current_role_counts.haulers += 1;
-    } else if (creep_memory.role == RoleType.BUILDER) {
-      current_role_counts.builders += 1;
-    }
-  }
-
-  return current_role_counts;
-}
